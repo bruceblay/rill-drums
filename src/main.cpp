@@ -222,9 +222,11 @@ void loop() {
       M5.Display.pushImage(0,0,240,135,reinterpret_cast<const lgfx::rgb565_t*>(painting.pixels()));
       // Names whichever punch-in effect is currently active, for the whole
       // time it's engaged, so a bad-sounding one can be identified by eye
-      // instead of guessing from timing.
+      // instead of guessing from timing. Hidden; flip to true to bring it
+      // back for another round of punch tuning.
+      constexpr bool showPunchName = false;
       unsigned activePunch = (currentScene >> 18) & 7;
-      if (activePunch) {
+      if (showPunchName && activePunch) {
         M5.Display.setTextSize(1);
         M5.Display.setTextColor(painting.groundIsLight() ? 0x0000 : 0xFFFF, painting.groundPacked());
         M5.Display.setCursor(186, 2); // Fixed right-aligned-ish spot; "Oct Down" is the longest name.
@@ -233,8 +235,8 @@ void loop() {
       }
       // Temporary diagnostic: names whichever voice(s) just fired, so a loud
       // hit can be identified by reading the screen instead of guessing from
-      // visual position. Hidden for now; flip to true to bring it back.
-      constexpr bool showHitDiagnostic = true;
+      // visual position. Hidden; flip to true to bring it back.
+      constexpr bool showHitDiagnostic = false;
       if (showHitDiagnostic && lastHitBits && uint32_t(now - lastHitAt) < 500) {
         M5.Display.setTextSize(1);
         M5.Display.setTextColor(painting.groundIsLight() ? 0x0000 : 0xFFFF, painting.groundPacked());
