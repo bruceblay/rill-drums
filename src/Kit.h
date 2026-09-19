@@ -154,10 +154,12 @@ class Engine {
     return bits;
   }
   // A tight run of hits then open space, rather than an even spread. Every
-  // few hits it jumps and starts a second cluster somewhere else.
+  // few hits it jumps and starts a second cluster somewhere else. Clusters
+  // start on a beat so the pulse stays legible; starting them anywhere let
+  // a voice drift off the grid badly enough to lose the bar.
   uint16_t clustered(unsigned pulses) {
     uint16_t bits = 0;
-    unsigned at = scoreRandom() % steps, gap = 1 + scoreRandom() % 2;
+    unsigned at = (scoreRandom() % 4) * 4, gap = 1 + scoreRandom() % 2;
     for (unsigned i = 0; i < pulses; ++i) {
       bits |= uint16_t(1u << (at % steps));
       at += gap;
@@ -180,18 +182,18 @@ class Engine {
     }
     return bits;
   }
-  // Weighted so Euclid stays the most common of the four; it is the most
-  // reliably musical, the others supply the contrast.
+  // Weighted so Euclid stays the most common; it is the most reliably
+  // musical, the others supply contrast. Deliberately conservative: the
+  // reference points here (Vespertine, Untrue, Compro) are intricate but
+  // always grounded, so the wilder styles are a seasoning, not the default.
   unsigned pickStyle(unsigned v) {
     unsigned roll = scoreRandom() % 100;
-    if (v == Kick) { // no call to answer, and it stays the most grounded voice
-      if (roll < 55) return StyleEuclid;
-      if (roll < 80) return StyleClustered;
-      return StyleSyncopated;
+    if (v == Kick) { // the anchor: it never leaves the grid
+      return roll < 80 ? StyleEuclid : StyleClustered;
     }
-    if (roll < 40) return StyleEuclid;
-    if (roll < 62) return StyleSyncopated;
-    if (roll < 80) return StyleClustered;
+    if (roll < 58) return StyleEuclid;
+    if (roll < 72) return StyleSyncopated;
+    if (roll < 84) return StyleClustered;
     return StyleResponse;
   }
   // Voice -> column in samples::kit[character][...].
@@ -334,12 +336,22 @@ class Engine {
         }
       }
       if (fillForced) sounds = true;
-      if (!sounds) continue;
-      if (v != Tom && v != Rim && !fillForced && scoreUnit() < skipChance) continue;
+      bool ghost = false;
+      if (!sounds) {
+        // Ghost notes: quiet hits between the pattern's own, left out of the
+        // pattern itself so they read as playing rather than as composition.
+        float chance = ghostChance(v);
+        if (chance <= 0 || activity == 0 || performanceUnit() >= chance) continue;
+        // A barely audible ghost shouldn't cut off a ringing open hat.
+        if (v == ClosedHat && channels[OpenHat].active) continue;
+        ghost = true;
+      }
+      if (!ghost && v != Tom && v != Rim && !fillForced && scoreUnit() < skipChance) continue;
       float accent = accentFor(stepIndex);
       // Fills build toward the downbeat instead of sitting at one level.
       float fillSwell = fillStep ? 0.9f + 0.45f * (float(posInFill + 1) / fillLen) : 1.0f;
       float velocity = baseVelocity[v] * accentActivity(activityGain) * accent * fillSwell * (0.85f + 0.30f * performanceUnit());
+      if (ghost) velocity *= 0.28f + 0.12f * performanceUnit();
       trigger(v, std::min(1.0f, velocity));
     }
     uint32_t swing = (stepIndex % 2 == 1) ? swingSamples : 0;
@@ -352,6 +364,12 @@ class Engine {
     }
   }
   static float accentActivity(float gain) { return gain; }
+  // Only the voices that can carry quiet detail without muddying the pulse.
+  static float ghostChance(unsigned v) {
+    if (v == ClosedHat) return 0.14f;
+    if (v == Snare || v == Rim) return 0.05f;
+    return 0.0f;
+  }
   // Where the weight of the bar falls. Always accenting the four made every
   // pattern read through the same metric lens however it was composed.
   float accentFor(unsigned step) const {
