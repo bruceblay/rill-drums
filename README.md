@@ -21,8 +21,8 @@ The data view shows the kit character, activity (sparse, steady or full), genera
 
 ## What it makes
 
-- **Seven synthesized drum voices:** Kick, Snare, Closed Hat, Open Hat, Clap, Tom and Rim. Each channel is monophonic and retriggers rather than stacking copies, the way a real drum machine's voices behave; a closed hat chokes a still-ringing open hat.
-- **Seven kit characters:** Skin, Box, Brush, Clay, Glass, Felt and Wire tune toward a hand-drum, electronic, brushed, woody, bright, muffled or metallic feel. One nod to Rill's seven timbres. Kick and Tom are live-synthesized (pitch-swept sine); Snare, Closed/Open Hat, Clap and Rim play back one-shot samples rendered offline per kit, since procedural noise synthesis for those voices never sounded right no matter how it was filtered or layered.
+- **Seven synthesized drum voices:** Kick, Snare, Closed Hat, Open Hat, Wood, Tom and Rim. Wood is a pitched hollow woodblock in place of the clap a drum machine would usually put there, which read as too bright and gregarious next to the rest; it sits well below the rim's thin tick and rings where the rim is instant. Each channel is monophonic and retriggers rather than stacking copies, the way a real drum machine's voices behave; a closed hat chokes a still-ringing open hat.
+- **Seven kit characters:** Skin, Box, Brush, Clay, Glass, Felt and Wire tune toward a hand-drum, electronic, brushed, woody, bright, muffled or metallic feel. One nod to Rill's seven timbres. Kick and Tom are live-synthesized (pitch-swept sine); Snare, Closed/Open Hat, Wood and Rim play back one-shot samples rendered offline per kit, since procedural noise synthesis for those voices never sounded right no matter how it was filtered or layered.
 - **A generative groove:** sixteen-step Euclidean-style patterns per voice, humanized timing and velocity, slowly mutating density and phase every few bars, and light swing that wanders bar to bar rather than sitting at one fixed amount. Fills vary in length, shape (a tom roll, alternating tom/rim, or a snare run-up) and build in velocity toward the downbeat each time one comes around, instead of a single fixed tag. The open hat never sounds on the same step as the closed hat.
 - **Six punch-in effects:** in the spirit of the punch-in FX on Teenage Engineering's Pocket Operator and EP-133 K.O. II instruments, one semi-randomly punches in every so often for about a bar, then clears itself. Each one keeps moving while it's active rather than sitting at one flat setting: Stutter accelerates through three shrinking loop lengths, Bit Crush and Lo-Fi wobble/step their quantization over the window, Feedback swells in and back out, and Octave Down glides the pitch down and back rather than snapping. The screen names the current one for as long as it's engaged.
 - **Six reactive visuals, bold saturated palettes:** hollow rings that radiate outward from each drum hit, a flashing step grid with a moving playhead, a circular/radial version of that same grid with a radar-style sweep, a rotating wireframe icosahedron whose edges flash per voice, a rotating wireframe diamond (octahedron), and Orbit, a seven-node constellation with one node per voice, spread over a sphere and connected to its two nearest neighbors. All three wireframe shapes and their edge/node graphs are found programmatically (shortest pairwise distance) rather than hand-transcribed. Shake cycles through all six.
@@ -86,7 +86,7 @@ Tests cover five simulated minutes of groove per seed, bounded output, seed repr
 ## Project layout
 
 - `src/Kit.h` — drum synthesis/sample playback and generative groove
-- `src/Samples.h` — embedded one-shot PCM samples (Snare, Hats, Clap, Rim), 7 kits
+- `src/Samples.h` — embedded one-shot PCM samples (Snare, Hats, Wood, Rim), 7 kits
 - `src/Pulse.h` — procedural visual families
 - `src/main.cpp` — audio, display, buttons and motion tasks
 - `src/ShakeDetector.h` — gesture recognition, shared with Rill

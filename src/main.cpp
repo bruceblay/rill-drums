@@ -20,7 +20,7 @@ static std::atomic<uint8_t> hitAccum{0};
 static std::atomic<uint32_t> worstRenderUs{0}, queueErrors{0};
 static uint8_t volume = 165;
 static const char* kitNames[] = {"Skin", "Box", "Brush", "Clay", "Glass", "Felt", "Wire"};
-static const char* voiceNames[] = {"Kick", "Snare", "C-Hat", "O-Hat", "Clap", "Tom", "Rim"};
+static const char* voiceNames[] = {"Kick", "Snare", "C-Hat", "O-Hat", "Wood", "Tom", "Rim"};
 static const char* punchNames[] = {"", "Crush", "LoFi", "Dub Echo", "Feedback", "Oct Down"};
 
 // Dev-only mode: front button plays and advances through one voice at a

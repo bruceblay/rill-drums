@@ -10,7 +10,7 @@
 // A bounded, deterministic generative drum machine shared by firmware and
 // audition. No allocation, locks, or transcendental functions in the
 // per-sample path. Kick and Tom are live-synthesized (pitch-swept sine);
-// Snare, Closed/Open Hat, Clap and Rim play back pre-rendered one-shot
+// Snare, Closed/Open Hat, Wood and Rim play back pre-rendered one-shot
 // samples (see Samples.h) rather than being synthesized from noise, since
 // procedural noise synthesis -- real-time or offline, however filtered or
 // layered -- kept reading as harsh and cheap. Driven by an evolving
@@ -19,7 +19,7 @@ namespace kit {
 constexpr uint32_t rate = 32000;
 constexpr float pi = 3.14159265358979323846f;
 constexpr unsigned steps = 16;
-enum Voice : unsigned { Kick = 0, Snare, ClosedHat, OpenHat, Clap, Tom, Rim, voiceCount };
+enum Voice : unsigned { Kick = 0, Snare, ClosedHat, OpenHat, Wood, Tom, Rim, voiceCount };
 // Bar-length "punch" effects, semi-randomly punched in on the master mix, in
 // the spirit of the Pocket Operator / EP-133 punch-in FX. None is not a
 // choosable effect, only the resting state.
@@ -33,7 +33,7 @@ class Engine {
     float freq = 0, freqEnd = 0, freqDecay = 1, phase = 0;
     float toneAmp = 0, toneDecay = 1;
     float clickAmp = 0, clickDecay = 1;
-    // Snare/Hat/Clap/Rim: a pointer straight into the flash-resident sample
+    // Snare/Hat/Wood/Rim: a pointer straight into the flash-resident sample
     // data (see Samples.h), not copied to RAM.
     const int16_t* sampleData = nullptr;
     uint32_t samplePos = 0, sampleLen = 0;
@@ -200,7 +200,7 @@ class Engine {
   static unsigned sampleColumn(unsigned v) {
     switch (v) {
       case Snare: return 0; case ClosedHat: return 1; case OpenHat: return 2;
-      case Clap: return 3; default: return 4; // Rim
+      case Wood: return 3; default: return 4; // Rim
     }
   }
   void triggerSample(Channel& c, unsigned v, float velocity) {
@@ -233,7 +233,7 @@ class Engine {
       case OpenHat:
         triggerSample(c, v, velocity);
         break;
-      case Clap:
+      case Wood:
         triggerSample(c, v, velocity);
         break;
       case Tom:
@@ -259,7 +259,7 @@ class Engine {
   }
   void composeGroove() {
     static const unsigned pulseRange[voiceCount][2] = {
-      {2, 5}, {2, 4}, {6, 12}, {1, 3}, {1, 2}, {0, 0}, {1, 4}};
+      {2, 5}, {2, 4}, {6, 12}, {1, 3}, {1, 3}, {0, 0}, {1, 4}};
     for (unsigned v = 0; v < voiceCount; ++v) {
       if (v == Tom) { pattern[v] = 0; continue; } // Tom speaks only in fills.
       unsigned span = pulseRange[v][1] - pulseRange[v][0];
@@ -283,7 +283,7 @@ class Engine {
       pattern[v] = uint16_t(((pattern[v] << rotation) | (pattern[v] >> (steps - rotation))) & 0xffffu);
     } else if (move == 1) {
       static const unsigned pulseRange[voiceCount][2] = {
-        {2, 5}, {2, 4}, {6, 12}, {1, 3}, {1, 2}, {0, 0}, {1, 4}};
+        {2, 5}, {2, 4}, {6, 12}, {1, 3}, {1, 3}, {0, 0}, {1, 4}};
       unsigned span = pulseRange[v][1] - pulseRange[v][0];
       unsigned pulses = pulseRange[v][0] + (span ? scoreRandom() % (span + 1) : 0);
       composeVoice(v, pulses, pickStyle(v));
@@ -367,7 +367,7 @@ class Engine {
   // Only the voices that can carry quiet detail without muddying the pulse.
   static float ghostChance(unsigned v) {
     if (v == ClosedHat) return 0.14f;
-    if (v == Snare || v == Rim) return 0.05f;
+    if (v == Snare || v == Rim || v == Wood) return 0.05f;
     return 0.0f;
   }
   // Where the weight of the bar falls. Always accenting the four made every
@@ -535,7 +535,7 @@ class Engine {
         tone = wave(c.phase) * c.toneAmp;
         c.toneAmp *= c.toneDecay;
       } else if (c.samplePos < c.sampleLen) {
-        // Snare/Hats/Clap/Rim: playback only, straight from flash. No live
+        // Snare/Hats/Wood/Rim: playback only, straight from flash. No live
         // noise synthesis for these voices -- see CLAUDE.md.
         sampleOut = (float(c.sampleData[c.samplePos]) / 32768.0f) * c.sampleGain;
         ++c.samplePos;
