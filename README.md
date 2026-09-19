@@ -2,7 +2,7 @@
 
 ![Four of Rill Drums' visual families](docs/visuals.png)
 
-*Rings, wireframe icosahedron, wireframe diamond and Orbit, each reacting to drum hits, on four of the six daylight grounds. Captured at the device's native 240x135 through the same render path the firmware uses.*
+*Four of the visual families, one per row, each on four different seeds: rings, wireframe icosahedron, wireframe diamond and Orbit. The ground changes with the palette, so a family looks like a different object depending on what it's printed on. Captured at the device's native 240x135 through the same render path the firmware uses.*
 
 A generative percussion companion to [Rill](https://github.com/bruceblay/rill), for the **M5Stack StickS3**. Rill Drums composes a slowly evolving, seven-voice drum groove and a reactive visual entirely on the device. Tap for a new kit and pattern. Shake for a different visual.
 
@@ -28,10 +28,6 @@ The data view shows the kit character, activity (sparse, steady or full), genera
 - **Six reactive visuals on daylight grounds:** six palettes, each a coloured ground with three flat inks on it, shared with Rill. Saturated ink on near-black read as neon however the hues were picked; the same drawing on a warm ground reads as printed. Colour lands on one of four fixed steps, and a fainter thing is paler rather than darker, since stepping toward black turns these palettes to mud. The families are hollow rings that radiate outward from each drum hit, a flashing step grid with a moving playhead, a circular/radial version of that same grid with a radar-style sweep, a rotating wireframe icosahedron whose edges flash per voice, a rotating wireframe diamond (octahedron), and Orbit, a seven-node constellation with one node per voice, spread over a sphere and connected to its two nearest neighbors. All three wireframe shapes and their edge/node graphs are found programmatically (shortest pairwise distance) rather than hand-transcribed. Shake cycles through all six.
 - **A short room ambience:** a small comb-and-diffuser send, tuned far shorter than Rill's echo, meant only to glue the seven voices together without smearing the groove.
 - **An always-on dub delay:** a tempo-synced feedback delay with tape-style darkening and a slow pitch wobble on the repeats, sitting under the mix at a modest level all the time rather than only on the punch. The Dub Echo punch throws its feedback, mix, wobble and tap length up temporarily on the same line instead of switching a separate effect on and off.
-
-![The four visual families across several of the daylight grounds](docs/palettes.png)
-
-*The same four families again, one per row, each on a different seed: rings, icosahedron, diamond and Orbit. The ground changes with the palette, so a family looks like a different object depending on what it's printed on.*
 
 Grooves are not saved across restarts. Device-to-device ensemble sync, so a Rill Drums unit could hold a shared tempo and role alongside Rill itself, follows the same unimplemented [design proposal](https://github.com/bruceblay/rill/blob/main/SYNC-DESIGN.md) as Rill; nothing here talks to another device yet.
 
