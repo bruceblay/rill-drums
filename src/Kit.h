@@ -58,6 +58,7 @@ class Engine {
   uint32_t stepSamples = rate * 60 / (68 * 4), swingSamples = 0;
   uint64_t clock = 0, nextStep = 0;
   unsigned stepIndex = 0, bar = 0, mutateAt = 3, fillAt = 5, fillLen = 2, fillKind = 0;
+  unsigned accentMode = 0;
   bool sequencerMuted = false;
   uint8_t hitMask = 0;
   float outputRamp = 0, target = 1, level = 0;
@@ -135,6 +136,64 @@ class Engine {
     rotation %= n;
     return uint16_t(((bits >> rotation) | (bits << (n - rotation))) & ((1u << n) - 1));
   }
+  // Euclid alone is maximally even, which is one specific rhythmic flavor.
+  // Using it for every voice on every generation gave each groove the same
+  // underlying skeleton no matter which kit was on top, so three more ways
+  // of filling the sixteen steps sit alongside it.
+  enum Style : unsigned { StyleEuclid = 0, StyleSyncopated, StyleClustered, StyleResponse };
+  // Pulses pushed onto the sixteenths between the four main beats, so the
+  // voice pulls against the meter instead of landing on it. The stride is
+  // coprime with the table length, so positions never repeat.
+  uint16_t syncopated(unsigned pulses) {
+    static const unsigned offbeats[12] = {3, 7, 11, 15, 1, 5, 9, 13, 2, 6, 10, 14};
+    static const unsigned strides[4] = {1, 5, 7, 11};
+    unsigned start = scoreRandom() % 12, stride = strides[scoreRandom() % 4];
+    uint16_t bits = 0;
+    for (unsigned i = 0; i < pulses && i < 12; ++i)
+      bits |= uint16_t(1u << offbeats[(start + i * stride) % 12]);
+    return bits;
+  }
+  // A tight run of hits then open space, rather than an even spread. Every
+  // few hits it jumps and starts a second cluster somewhere else.
+  uint16_t clustered(unsigned pulses) {
+    uint16_t bits = 0;
+    unsigned at = scoreRandom() % steps, gap = 1 + scoreRandom() % 2;
+    for (unsigned i = 0; i < pulses; ++i) {
+      bits |= uint16_t(1u << (at % steps));
+      at += gap;
+      if (i && i % 3 == 0) at += 2 + scoreRandom() % 5;
+    }
+    return bits;
+  }
+  // Answers another voice: never on top of the call, and preferring the step
+  // straight after one of its hits.
+  uint16_t response(uint16_t call, unsigned pulses) {
+    uint16_t bits = 0;
+    unsigned start = scoreRandom() % steps;
+    for (unsigned t = 0; t < steps && pulses; ++t) {
+      unsigned s = (start + t) % steps;
+      if ((call >> s) & 1u) continue;
+      bool after = (call >> ((s + steps - 1) % steps)) & 1u;
+      if (!after && scoreUnit() > 0.35f) continue;
+      bits |= uint16_t(1u << s);
+      --pulses;
+    }
+    return bits;
+  }
+  // Weighted so Euclid stays the most common of the four; it is the most
+  // reliably musical, the others supply the contrast.
+  unsigned pickStyle(unsigned v) {
+    unsigned roll = scoreRandom() % 100;
+    if (v == Kick) { // no call to answer, and it stays the most grounded voice
+      if (roll < 55) return StyleEuclid;
+      if (roll < 80) return StyleClustered;
+      return StyleSyncopated;
+    }
+    if (roll < 40) return StyleEuclid;
+    if (roll < 62) return StyleSyncopated;
+    if (roll < 80) return StyleClustered;
+    return StyleResponse;
+  }
   // Voice -> column in samples::kit[character][...].
   static unsigned sampleColumn(unsigned v) {
     switch (v) {
@@ -188,8 +247,13 @@ class Engine {
     }
     hitMask = uint8_t(hitMask | (1u << v));
   }
-  void composeVoice(unsigned v, unsigned pulses, unsigned rotation) {
-    pattern[v] = euclid(pulses, steps, rotation);
+  void composeVoice(unsigned v, unsigned pulses, unsigned style) {
+    switch (style) {
+      case StyleSyncopated: pattern[v] = syncopated(pulses); break;
+      case StyleClustered: pattern[v] = clustered(pulses); break;
+      case StyleResponse: pattern[v] = response(pattern[Kick], pulses); break;
+      default: pattern[v] = euclid(pulses, steps, scoreRandom() % steps); break;
+    }
   }
   void composeGroove() {
     static const unsigned pulseRange[voiceCount][2] = {
@@ -198,7 +262,9 @@ class Engine {
       if (v == Tom) { pattern[v] = 0; continue; } // Tom speaks only in fills.
       unsigned span = pulseRange[v][1] - pulseRange[v][0];
       unsigned pulses = pulseRange[v][0] + (span ? scoreRandom() % (span + 1) : 0);
-      composeVoice(v, pulses, scoreRandom() % steps);
+      // Kick is voice 0, so it is always composed before any voice that
+      // might answer it.
+      composeVoice(v, pulses, pickStyle(v));
     }
     // An open hat only rings where the closed hat leaves room for it.
     pattern[OpenHat] &= uint16_t(~pattern[ClosedHat]);
@@ -218,7 +284,7 @@ class Engine {
         {2, 5}, {2, 4}, {6, 12}, {1, 3}, {1, 2}, {0, 0}, {1, 4}};
       unsigned span = pulseRange[v][1] - pulseRange[v][0];
       unsigned pulses = pulseRange[v][0] + (span ? scoreRandom() % (span + 1) : 0);
-      composeVoice(v, pulses, scoreRandom() % steps);
+      composeVoice(v, pulses, pickStyle(v));
     } else if (move == 2) {
       activity = (activity + 1 + scoreRandom() % 3) % 4;
     } else {
@@ -270,7 +336,7 @@ class Engine {
       if (fillForced) sounds = true;
       if (!sounds) continue;
       if (v != Tom && v != Rim && !fillForced && scoreUnit() < skipChance) continue;
-      float accent = stepIndex % 4 == 0 ? 1.0f : 0.82f;
+      float accent = accentFor(stepIndex);
       // Fills build toward the downbeat instead of sitting at one level.
       float fillSwell = fillStep ? 0.9f + 0.45f * (float(posInFill + 1) / fillLen) : 1.0f;
       float velocity = baseVelocity[v] * accentActivity(activityGain) * accent * fillSwell * (0.85f + 0.30f * performanceUnit());
@@ -286,6 +352,15 @@ class Engine {
     }
   }
   static float accentActivity(float gain) { return gain; }
+  // Where the weight of the bar falls. Always accenting the four made every
+  // pattern read through the same metric lens however it was composed.
+  float accentFor(unsigned step) const {
+    switch (accentMode) {
+      case 1: return step % 4 == 2 ? 1.0f : 0.80f; // weight off the downbeat
+      case 2: return step % 3 == 0 ? 1.0f : 0.80f; // three against four
+      default: return step % 4 == 0 ? 1.0f : 0.82f;
+    }
+  }
   float punchProgress() const {
     if (punchEndAt <= punchStartAt) return 1;
     return std::min(1.0f, float(clock - punchStartAt) / float(punchEndAt - punchStartAt));
@@ -381,6 +456,8 @@ class Engine {
     punchType = PunchNone; punchPitchScale = 1; punchFeedbackMul = 1; punchMixAdd = 0;
     dubThrowFeedback = dubThrowMix = dubThrowWobble = 0;
     activity = scoreRandom() % 3;
+    unsigned accentRoll = random() % 4; // the plain four still half the time
+    accentMode = accentRoll == 0 ? 1 : accentRoll == 1 ? 2 : 0;
     stepIndex = 0; bar = 0;
     mutateAt = 2 + scoreRandom() % 4;
     scheduleFill();
