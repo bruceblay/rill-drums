@@ -48,10 +48,23 @@ class Painting {
 
   unsigned random() { rng ^= rng << 13; rng ^= rng >> 17; rng ^= rng << 5; return rng; }
   float unit() { return float(random() >> 8) / 16777216.0f; }
-  static uint16_t color(Color c, float shade = 1) {
-    unsigned r = unsigned(std::max(0.0f, std::min(255.0f, c.r * shade)));
-    unsigned g = unsigned(std::max(0.0f, std::min(255.0f, c.g * shade)));
-    unsigned b = unsigned(std::max(0.0f, std::min(255.0f, c.b * shade)));
+  // Shade fades an ink toward the ground rather than toward black. On a
+  // daylight ground, stepping toward black turns every palette to mud: the
+  // fainter thing needs to be paler, not darker. Every existing call site
+  // keeps its meaning, since shade 1 is still the full ink.
+  uint16_t color(Color c, float shade = 1) const {
+    // Rill's flat drawing language: colour lands on one of four fixed steps
+    // rather than a continuous ramp. The faintest step is still real ink,
+    // because these shades were tuned as dim glow on near-black and bottom
+    // out around 0.07, which against a daylight ground is the ground itself.
+    static const float quarters[4] = {0.42f, 0.64f, 0.82f, 1.0f};
+    float mix = quarters[unsigned(std::max(0.0f, std::min(1.0f, shade)) * 3.999f)];
+    float cr = backgroundColor.r + (c.r - backgroundColor.r) * mix;
+    float cg = backgroundColor.g + (c.g - backgroundColor.g) * mix;
+    float cb = backgroundColor.b + (c.b - backgroundColor.b) * mix;
+    unsigned r = unsigned(std::max(0.0f, std::min(255.0f, cr)));
+    unsigned g = unsigned(std::max(0.0f, std::min(255.0f, cg)));
+    unsigned b = unsigned(std::max(0.0f, std::min(255.0f, cb)));
     return uint16_t(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
   }
   void span(int y, int left, int right, uint16_t c) {
@@ -271,19 +284,38 @@ class Painting {
     unsigned activeIndex = 0;
     for (unsigned i = 0; i < activeCount; ++i) if (activeKinds[i] == kind) activeIndex = i;
     kind = count ? activeKinds[(activeIndex + 1) % activeCount] : activeKinds[random() % activeCount];
-    palette = count ? (palette + 1 + random() % 3) % 4 : random() % 4;
+    palette = count ? (palette + 1 + random() % 5) % 6 : random() % 6;
     ++count; phase = unit() * 6.283185f; breath = 0;
     // On-device swatch tests settled this: nudging red/green toward other
     // hues to "correct" them looked worse, not better — pure red, pure
     // green, this blue and this purple were the ones confirmed to read
     // true on the actual panel. Pink and cyan sit in the same clean
     // territory (only one of red/green present alongside blue).
-    static const Color palettes[4][3] = {
-      {{255, 0, 0}, {0, 255, 0}, {0, 90, 255}},
-      {{160, 0, 255}, {255, 20, 147}, {0, 90, 255}},
-      {{255, 0, 0}, {160, 0, 255}, {0, 220, 255}},
-      {{0, 255, 0}, {0, 90, 255}, {255, 20, 147}}};
-    for (unsigned i = 0; i < 3; ++i) ink[i] = palettes[palette][i];
+    // Daylight palettes, brought over from Rill: a coloured ground and three
+    // flat inks on it, in the register of a faded photograph rather than of
+    // emitted light. The ground is the important part -- saturated ink on
+    // near-black is what made every earlier palette here read as neon however
+    // the hues were picked, and the same drawing on a warm ground reads as
+    // printed. It also suits this panel, which loses shadow detail but holds
+    // a light field without trouble.
+    //
+    // First entry is the ground, then the three inks.
+    static const Color palettes[6][4] = {
+      // Shōwa afternoon: faded cream, dusty red, sun-bleached teal, mustard.
+      {{232, 220, 192}, {196,  85,  63}, { 78, 138, 134}, {211, 160,  60}},
+      // Rainy Ginza: wet pavement grey, slate, brick, bone.
+      {{201, 210, 206}, { 62,  90,  99}, {179,  91,  74}, {240, 230, 210}},
+      // Park in spring: soft sky, cherry red, leaf, cream.
+      {{143, 203, 232}, {226,  88,  75}, { 95, 163,  82}, {251, 240, 216}},
+      // Village morning: bone, sage, terracotta, slate blue.
+      {{234, 227, 210}, {126, 154, 107}, {192, 107,  78}, {110, 132, 148}},
+      // Late sun: warm peach, persimmon, deep olive, plum brown.
+      {{240, 201, 160}, {212,  91,  60}, {107, 122,  58}, {122,  74,  70}},
+      // Night market: deep indigo, lantern amber, faded rose, pale jade.
+      {{ 44,  58,  74}, {232, 163,  61}, {201, 106, 106}, {143, 185, 168}},
+    };
+    backgroundColor = palettes[palette][0];
+    for (unsigned i = 0; i < 3; ++i) ink[i] = palettes[palette][i + 1];
     background = color(backgroundColor);
     for (auto& r : ripples) r.active = false;
     for (auto& row : cellGlow) row.fill(0);
@@ -294,6 +326,12 @@ class Painting {
   unsigned generation() const { return count; }
   unsigned visualFamily() const { return kind; }
   const uint16_t* pixels() const { return frame.data(); }
+  // So on-screen text can sit on the current palette's ground instead of
+  // punching a black box into it.
+  uint16_t groundPacked() const { return background; }
+  bool groundIsLight() const {
+    return backgroundColor.r * 0.299f + backgroundColor.g * 0.587f + backgroundColor.b * 0.114f > 140;
+  }
   void render(float dt, uint8_t hitMask, unsigned currentStep) {
     dt = std::max(0.0f, std::min(0.1f, dt));
     phase += dt; if (phase > 628.3185f) phase -= 628.3185f;

@@ -226,7 +226,7 @@ void loop() {
       unsigned activePunch = (currentScene >> 18) & 7;
       if (activePunch) {
         M5.Display.setTextSize(1);
-        M5.Display.setTextColor(0xFFFF, 0x0000);
+        M5.Display.setTextColor(painting.groundIsLight() ? 0x0000 : 0xFFFF, painting.groundPacked());
         M5.Display.setCursor(186, 2); // Fixed right-aligned-ish spot; "Oct Down" is the longest name.
         M5.Display.print(punchNames[activePunch]);
         M5.Display.setTextSize(2);
@@ -237,7 +237,7 @@ void loop() {
       constexpr bool showHitDiagnostic = true;
       if (showHitDiagnostic && lastHitBits && uint32_t(now - lastHitAt) < 500) {
         M5.Display.setTextSize(1);
-        M5.Display.setTextColor(0xFFFF, 0x0000);
+        M5.Display.setTextColor(painting.groundIsLight() ? 0x0000 : 0xFFFF, painting.groundPacked());
         M5.Display.setCursor(2, 2);
         bool first = true;
         for (unsigned v = 0; v < kit::voiceCount; ++v) if (lastHitBits & (1u << v)) {
