@@ -1,5 +1,9 @@
 # Rill Drums
 
+![Four of Rill Drums' visual families](docs/visuals.png)
+
+*Rings, wireframe icosahedron, wireframe diamond and Orbit, each reacting to drum hits. Captured at the device's native 240x135 through the same render path the firmware uses.*
+
 A generative percussion companion to [Rill](https://github.com/bruceblay/rill), for the **M5Stack StickS3**. Rill Drums composes a slowly evolving, seven-voice drum groove and a reactive visual entirely on the device. Tap for a new kit and pattern. Shake for a different visual.
 
 It is a sibling instrument, not a Rill feature: same hardware, same GPL-3.0-or-later license and Rill's parent project Pocket Radio, and built with the same host-testable, allocation-free approach, but its own repository, its own generative engine, and its own aesthetic. It needs no Wi-Fi, account, audio files, or cloud service.
