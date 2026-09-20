@@ -215,6 +215,7 @@ class Engine {
     c.duration = clip.length;
   }
   void trigger(unsigned v, float velocity) {
+    velocity = velocityGain(velocity);
     const Character& k = active_();
     Channel& c = channels[v];
     c.active = true; c.age = 0;
@@ -383,8 +384,10 @@ class Engine {
       float accent = accentFor(stepIndex);
       // Fills build toward the downbeat instead of sitting at one level.
       float fillSwell = fillStep ? 0.9f + 0.45f * (float(posInFill + 1) / fillLen) : 1.0f;
-      float velocity = baseVelocity[v] * accentActivity(activityGain) * accent * fillSwell * (0.85f + 0.30f * performanceUnit());
+      float velocity = baseVelocity[v] * accentActivity(activityGain) * accent * fillSwell * humanize(v, performanceUnit());
       if (ghost) velocity *= 0.28f + 0.12f * performanceUnit();
+      // Only the closed hat ratchets: it is the voice carrying the rate, and
+      // the one a change in note length actually reads on.
       trigger(v, std::min(1.0f, velocity));
       // Only the closed hat ratchets: it is the voice carrying the rate, and
       // the one a change in note length actually reads on.
@@ -409,13 +412,34 @@ class Engine {
     if (v == Snare || v == Rim || v == Wood) return 0.05f;
     return 0.0f;
   }
-  // Where the weight of the bar falls. Always accenting the four made every
-  // pattern read through the same metric lens however it was composed.
+  // Where the weight of the bar falls. A real metric hierarchy rather than
+  // accented/unaccented: the bar's first beat carries most, the halfway beat
+  // next, the other beats next, then offbeat eighths, and the sixteenths in
+  // between are the lightest. The old two-level version put barely 1.7 dB
+  // between a strong hit and a weak one, which is what made every hit sound
+  // like the same hit.
   float accentFor(unsigned step) const {
-    switch (accentMode) {
-      case 1: return step % 4 == 2 ? 1.0f : 0.80f; // weight off the downbeat
-      case 2: return step % 3 == 0 ? 1.0f : 0.80f; // three against four
-      default: return step % 4 == 0 ? 1.0f : 0.82f;
+    unsigned s = step;
+    if (accentMode == 1) s = (step + 14) % steps;      // weight off the downbeat
+    else if (accentMode == 2) return step % 3 == 0 ? 1.0f : (step % 2 ? 0.56f : 0.74f);
+    if (s == 0) return 1.0f;
+    if (s == steps / 2) return 0.88f;
+    if (s % 4 == 0) return 0.80f;
+    if (s % 2 == 0) return 0.66f;
+    return 0.54f;
+  }
+  // Perceived loudness is not linear in velocity, and a straight mapping
+  // keeps soft hits far too present. The curve pushes the quiet end down
+  // without touching a full-strength hit.
+  static float velocityGain(float v) { return v * v * (2.0f - v); }
+  // How far a voice's level moves from hit to hit. The top end carries the
+  // variation: hats, snare, wood and rim are where a player's touch shows,
+  // while the kick stays even because it is holding the floor down.
+  static float humanize(unsigned v, float r) {
+    switch (v) {
+      case Kick: return 0.88f + 0.18f * r;
+      case Tom: return 0.80f + 0.32f * r;
+      default: return 0.60f + 0.55f * r; // Snare, both hats, Wood, Rim
     }
   }
   float punchProgress() const {
@@ -632,8 +656,21 @@ class Engine {
     float processed = applyPunch(clean);
     level += (target - level) / (rate * 0.15f);
     outputRamp = std::min(1.0f, outputRamp + 1.0f / (rate * 0.08f));
-    float x = processed * level * outputRamp * 1.7f;
-    return x / (1 + std::abs(x));
+    float x = processed * level * outputRamp * 1.55f;
+    // Limit only what actually approaches the rails. The old x/(1+|x|) ran
+    // across the whole range, so every loud hit was pulled toward every
+    // quiet one and the groove lost most of its dynamics before it reached
+    // the speaker. Below the knee this is now perfectly linear.
+    constexpr float knee = 0.60f, ceiling = 0.86f;
+    float mag = std::abs(x);
+    if (mag > knee) {
+      // Approaches the ceiling without ever reaching it, so the output stays
+      // inside the headroom the tests enforce however many voices coincide.
+      float over = mag - knee, room = ceiling - knee;
+      mag = knee + room * over / (over + room);
+      x = x < 0 ? -mag : mag;
+    }
+    return x;
   }
   void render(int16_t* output, unsigned count) {
     for (unsigned i = 0; i < count; ++i) output[i] = int16_t(sample() * 32767);
