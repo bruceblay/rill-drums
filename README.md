@@ -1,6 +1,6 @@
 # Rill Drums
 
-![Four of Rill Drums' visual families](docs/visuals.png)
+![Rill Drums' visual families across the daylight palettes](docs/visuals-daylight.png)
 
 *Four of the visual families, one per row, each on four different seeds: rings, wireframe icosahedron, wireframe diamond and Orbit. The ground changes with the palette, so a family looks like a different object depending on what it's printed on. Captured at the device's native 240x135 through the same render path the firmware uses.*
 
