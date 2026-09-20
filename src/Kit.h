@@ -59,6 +59,11 @@ class Engine {
   uint64_t clock = 0, nextStep = 0;
   unsigned stepIndex = 0, bar = 0, mutateAt = 3, fillAt = 5, fillLen = 2, fillKind = 0;
   unsigned accentMode = 0;
+  uint64_t ratchetAt = 0;
+  uint32_t ratchetSpacing = 0;
+  unsigned ratchetLeft = 0, ratchetVoice = 0;
+  float ratchetVelocity = 0;
+  unsigned hatRunLeft = 0, hatRunSub = 2;
   bool sequencerMuted = false;
   uint8_t hitMask = 0;
   float outputRamp = 0, target = 1, level = 0;
@@ -309,7 +314,35 @@ class Engine {
     fillLen = 1 + scoreRandom() % 4;
     fillKind = scoreRandom() % 3;
   }
+  // Sub-step retriggers. A step is a sixteenth here, so the only way to
+  // reach thirty-seconds and faster is to split one step into several rapid
+  // hits. Each repeat is a little quieter, so it reads as a played roll
+  // rather than a machine-gun.
+  void serviceRatchet() {
+    if (!ratchetLeft || clock < ratchetAt) return;
+    trigger(ratchetVoice, std::min(1.0f, ratchetVelocity));
+    ratchetVelocity *= 0.86f;
+    ratchetAt += ratchetSpacing;
+    --ratchetLeft;
+  }
+  // A hat run: for a few steps the closed hat doubles or quadruples its
+  // rate, so the pattern changes note length instead of only adding and
+  // removing hits. Short and occasional, so the pulse stays legible.
+  void maybeHatRun() {
+    if (hatRunLeft || scoreUnit() > 0.18f) return;
+    hatRunLeft = 2 + scoreRandom() % 5;
+    hatRunSub = (scoreRandom() % 4 == 0) ? 4 : 2;
+  }
+  void scheduleRatchet(unsigned v, unsigned sub, float velocity) {
+    if (sub < 2) { ratchetLeft = 0; return; }
+    ratchetVoice = v;
+    ratchetLeft = sub - 1;
+    ratchetSpacing = std::max(1u, stepSamples / sub);
+    ratchetAt = clock + ratchetSpacing;
+    ratchetVelocity = velocity * 0.85f;
+  }
   void stepClock() {
+    serviceRatchet();
     if (clock < nextStep) return;
     float activityGain = activity == 0 ? 0.6f : activity == 3 ? 1.15f : 0.85f;
     float skipChance = activity == 0 ? 0.35f : activity == 3 ? 0.0f : 0.10f;
@@ -353,13 +386,19 @@ class Engine {
       float velocity = baseVelocity[v] * accentActivity(activityGain) * accent * fillSwell * (0.85f + 0.30f * performanceUnit());
       if (ghost) velocity *= 0.28f + 0.12f * performanceUnit();
       trigger(v, std::min(1.0f, velocity));
+      // Only the closed hat ratchets: it is the voice carrying the rate, and
+      // the one a change in note length actually reads on.
+      if (v == ClosedHat && !ghost)
+        scheduleRatchet(v, hatRunLeft ? hatRunSub : (performanceUnit() < 0.04f ? 2 : 1), velocity);
     }
+    if (hatRunLeft) --hatRunLeft;
     uint32_t swing = (stepIndex % 2 == 1) ? swingSamples : 0;
     nextStep += stepSamples + swing;
     if (++stepIndex == steps) {
       stepIndex = 0; ++bar;
       if (bar >= mutateAt) { mutateGroove(); mutateAt = bar + 2 + scoreRandom() % 4; }
       if (bar > fillAt) scheduleFill();
+      maybeHatRun();
       maybePunch();
     }
   }
@@ -472,6 +511,7 @@ class Engine {
     performanceRng = (rng ^ 0xa341316cu) | 1u;
     punchRng = (rng ^ 0xc2b2ae35u) | 1u;
     punchType = PunchNone; punchPitchScale = 1; punchFeedbackMul = 1; punchMixAdd = 0;
+    ratchetLeft = 0; hatRunLeft = 0;
     dubThrowFeedback = dubThrowMix = dubThrowWobble = 0;
     activity = scoreRandom() % 3;
     unsigned accentRoll = random() % 4; // the plain four still half the time

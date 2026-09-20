@@ -1,5 +1,17 @@
 # Changes
 
+## Study 8
+
+Every kit was one recipe (noise into a bandpass) with only the filter frequency and decay changed, which is why they read as a single sound tuned seven ways. A small speaker flattens exactly that kind of spectral-tilt difference while preserving texture and decay, so each kit now runs its own chain of stock Tone.js effects: warm waveshaping, bitcrush, reverb wash, saturation, a bright small room, a dark wash on brown noise, and heavy grit. Trimming the inaudible sample tails below -44 dBFS more than halved the sample data.
+
+Running *every* voice through the kit chain turned out to be wrong, though: Felt's closed hat rang for 0.72s at 1218 Hz and read as a snare. Reverb now scales per voice while the shaping effects stay at full strength, since those colour a sound without stretching it in time. Closed hats take no reverb and run 16 to 80ms across all seven kits.
+
+Replaced the clap with Wood, a pitched hollow woodblock from a single stock FMSynth. The clap was the one voice announcing "drum machine", an 808/house signifier at odds with the rest. Wood sits well below the rim's thin instant tick and rings, so the two read as different instruments.
+
+Grooves compose four ways instead of only Euclidean, which alone is maximally even and gave every generation the same skeleton: syncopated, clustered and call-and-response join it, weighted so Euclid stays most common and the kick never leaves the grid. The accent grid is no longer pinned to every fourth step. Quiet ghost notes carry the intricacy, and the closed hat can break into a run that splits a step into two or four hits, so the groove changes note length rather than only adding and removing notes.
+
+Repainted onto Rill's daylight grounds: six palettes of a coloured ground and three flat inks. Saturated ink on near-black read as neon however the hues were picked; the same drawing on a warm ground reads as printed. Shade fades toward the ground rather than toward black, and colour lands on one of four fixed steps. The punch-name and hit-name overlays are hidden, since both were tuning aids drawing text over the picture.
+
 ## Study 7
 
 Two fixes and a musicality pass. The wireframe visuals (icosahedron, diamond, orbit) were quietly squashed to half height: the pitch rotation's `cos`/`sin` were each multiplied by an extra 0.5, which breaks the unit-circle identity a rotation matrix depends on, so every solid's vertical extent came out half its horizontal extent -- most visible as a "stretched wide" look against the 240x135 landscape screen. Removed the stray `0.5f`.
