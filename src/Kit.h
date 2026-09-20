@@ -385,7 +385,7 @@ class Engine {
       // Fills build toward the downbeat instead of sitting at one level.
       float fillSwell = fillStep ? 0.9f + 0.45f * (float(posInFill + 1) / fillLen) : 1.0f;
       float velocity = baseVelocity[v] * accentActivity(activityGain) * accent * fillSwell * humanize(v, performanceUnit());
-      if (ghost) velocity *= 0.28f + 0.12f * performanceUnit();
+      if (ghost) velocity *= 0.38f + 0.14f * performanceUnit();
       // Only the closed hat ratchets: it is the voice carrying the rate, and
       // the one a change in note length actually reads on.
       trigger(v, std::min(1.0f, velocity));
@@ -421,17 +421,20 @@ class Engine {
   float accentFor(unsigned step) const {
     unsigned s = step;
     if (accentMode == 1) s = (step + 14) % steps;      // weight off the downbeat
-    else if (accentMode == 2) return step % 3 == 0 ? 1.0f : (step % 2 ? 0.56f : 0.74f);
+    else if (accentMode == 2) return step % 3 == 0 ? 1.0f : (step % 2 ? 0.66f : 0.80f);
     if (s == 0) return 1.0f;
     if (s == steps / 2) return 0.88f;
     if (s % 4 == 0) return 0.80f;
-    if (s % 2 == 0) return 0.66f;
-    return 0.54f;
+    if (s % 2 == 0) return 0.74f;
+    return 0.64f;
   }
   // Perceived loudness is not linear in velocity, and a straight mapping
   // keeps soft hits far too present. The curve pushes the quiet end down
   // without touching a full-strength hit.
-  static float velocityGain(float v) { return v * v * (2.0f - v); }
+  // Half linear, half curved. The pure curve dropped the quiet end so far
+  // that soft hits read as dropouts rather than as soft hits; a full-strength
+  // hit is unchanged either way.
+  static float velocityGain(float v) { return 0.5f * v + 0.5f * (v * v * (2.0f - v)); }
   // How far a voice's level moves from hit to hit. The top end carries the
   // variation: hats, snare, wood and rim are where a player's touch shows,
   // while the kick stays even because it is holding the floor down.
@@ -439,7 +442,7 @@ class Engine {
     switch (v) {
       case Kick: return 0.88f + 0.18f * r;
       case Tom: return 0.80f + 0.32f * r;
-      default: return 0.60f + 0.55f * r; // Snare, both hats, Wood, Rim
+      default: return 0.70f + 0.45f * r; // Snare, both hats, Wood, Rim
     }
   }
   float punchProgress() const {
