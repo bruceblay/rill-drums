@@ -4,7 +4,7 @@
 
 *Four of the visual families, one per row, each on four different seeds: rings, wireframe icosahedron, wireframe diamond and Orbit. The ground changes with the palette, so a family looks like a different object depending on what it's printed on. Captured at the device's native 240x135 through the same render path the firmware uses.*
 
-A generative percussion companion to [Rill](https://github.com/bruceblay/rill), for the **M5Stack StickS3**. Rill Drums composes a slowly evolving, seven-voice drum groove and a reactive visual entirely on the device. Tap for a new kit and pattern. Shake for a different visual.
+A generative percussion companion to [Rill](https://github.com/bruceblay/rill-synth), for the **M5Stack StickS3**. Rill Drums composes a slowly evolving, seven-voice drum groove and a reactive visual entirely on the device. Tap for a new kit and pattern. Shake for a different visual.
 
 It is a sibling instrument, not a Rill feature: same hardware, same GPL-3.0-or-later license and Rill's parent project Pocket Radio, and built with the same host-testable, allocation-free approach, but its own repository, its own generative engine, and its own aesthetic. It needs no Wi-Fi, account, audio files, or cloud service.
 
@@ -29,7 +29,7 @@ The data view shows the kit character, activity (sparse, steady or full), genera
 - **A short room ambience:** a small comb-and-diffuser send, tuned far shorter than Rill's echo, meant only to glue the seven voices together without smearing the groove.
 - **An always-on dub delay:** a tempo-synced feedback delay with tape-style darkening and a slow pitch wobble on the repeats, sitting under the mix at a modest level all the time rather than only on the punch. The Dub Echo punch throws its feedback, mix, wobble and tap length up temporarily on the same line instead of switching a separate effect on and off.
 
-Grooves are not saved across restarts. Device-to-device ensemble sync, so a Rill Drums unit could hold a shared tempo and role alongside Rill itself, follows the same unimplemented [design proposal](https://github.com/bruceblay/rill/blob/main/SYNC-DESIGN.md) as Rill; nothing here talks to another device yet.
+Grooves are not saved across restarts. Device-to-device ensemble sync, so a Rill Drums unit could hold a shared tempo and role alongside Rill itself, follows the same unimplemented [design proposal](https://github.com/bruceblay/rill-synth/blob/main/SYNC-DESIGN.md) as Rill; nothing here talks to another device yet.
 
 ## Hardware
 
@@ -95,6 +95,6 @@ Tests cover five simulated minutes of groove per seed, bounded output, seed repr
 
 ## Credits and license
 
-Created by Bruce Blay, in the spirit of [Rill](https://github.com/bruceblay/rill). Developed through iterative on-device listening and viewing, with Claude assisting implementation.
+Created by Bruce Blay, in the spirit of [Rill](https://github.com/bruceblay/rill-synth). Developed through iterative on-device listening and viewing, with Claude assisting implementation.
 
 Rill Drums follows Rill's parent project Pocket Radio's **GPL-3.0-or-later** license. See [LICENSE](LICENSE).
