@@ -2,6 +2,8 @@
 
 # Rill Drums
 
+**rill** /rɪl/ *noun* — a small stream or a tiny, shallow channel cut into soil by running water.
+
 A generative percussion instrument for the **M5Stack StickS3**. Seven drum voices form slowly evolving grooves with reactive visuals. Tap for a new kit and pattern. Shake for a new visual. Sound and visuals run entirely on the device, without Wi-Fi or an account.
 
 [Play Rill Drums](https://rillsound.com/drums) · [Build and install](#build-and-install)
