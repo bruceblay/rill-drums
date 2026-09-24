@@ -58,6 +58,12 @@ class Engine {
   uint32_t stepSamples = rate * 60 / (68 * 4), swingSamples = 0;
   uint64_t clock = 0, nextStep = 0;
   unsigned stepIndex = 0, bar = 0, mutateAt = 3, fillAt = 5, fillLen = 2, fillKind = 0;
+  // Ensemble: the shared grid arrives as a tempo to adopt and a phase error
+  // to work off. The error is paid down a little at each step rather than
+  // applied at once, so the pulse is never jumped -- a jumped pulse is a
+  // dropped or doubled step, which is louder than being a few milliseconds
+  // out.
+  int32_t gridTrim = 0;
   unsigned accentMode = 0;
   uint64_t ratchetAt = 0;
   uint32_t ratchetSpacing = 0;
@@ -345,6 +351,11 @@ class Engine {
   void stepClock() {
     serviceRatchet();
     if (clock < nextStep) return;
+    if (gridTrim) {
+      int32_t bite = std::max(int32_t(-96), std::min(int32_t(96), gridTrim));
+      nextStep = uint64_t(int64_t(nextStep) + bite);
+      gridTrim -= bite;
+    }
     float activityGain = activity == 0 ? 0.6f : activity == 3 ? 1.15f : 0.85f;
     float skipChance = activity == 0 ? 0.35f : activity == 3 ? 0.0f : 0.10f;
     bool fillStep = bar == fillAt && stepIndex >= steps - fillLen;
@@ -577,6 +588,23 @@ class Engine {
   unsigned barCount() const { return bar; }
   uint64_t frames() const { return clock; }
   uint8_t drainHits() { uint8_t m = hitMask; hitMask = 0; return m; }
+  // Take a conductor's tempo. Phase is left alone: it arrives separately as
+  // a trim, and changing both at once makes neither observable.
+  void followTempo(unsigned bpm) {
+    if (!bpm || bpm == tempo) return;
+    tempo = std::max(40u, std::min(160u, bpm));
+    stepSamples = rate * 60 / (tempo * 4);
+  }
+  void trimGrid(int32_t samples) { gridTrim = samples; }
+  // Where this engine sits inside its bar, in samples, which is the only
+  // thing the ensemble needs to compare.
+  uint32_t barPhase() const {
+    uint64_t remaining = nextStep > clock ? nextStep - clock : 0;
+    uint32_t into = uint32_t(stepSamples - std::min<uint64_t>(stepSamples, remaining));
+    return uint32_t(stepIndex) * stepSamples + into;
+  }
+  uint32_t barSamples() const { return stepSamples * steps; }
+
   void setPlaying(bool playing) { target = playing ? 1.0f : 0.0f; }
   // For the on-device dev/test mode: trigger one voice deliberately and set
   // the kit character directly, rather than waiting on the generative

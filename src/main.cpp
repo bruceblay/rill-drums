@@ -5,6 +5,7 @@
 #include <esp_system.h>
 #include "Kit.h"
 #include "Pulse.h"
+#include "Radio.h"
 #include "ShakeDetector.h"
 
 // Working title. Display and controls run separately from the audio producer.
@@ -18,6 +19,11 @@ static std::atomic<bool> playing{true}, changeRequested{false}, repaintRequested
 static std::atomic<uint32_t> sceneInfo{0}, currentStep{0};
 static std::atomic<uint8_t> hitAccum{0};
 static std::atomic<uint32_t> worstRenderUs{0}, queueErrors{0};
+// The ensemble's tempo and the phase error against its bar line, handed to
+// the audio task the same way every other request is: this engine is not
+// safe to touch from two tasks at once.
+static std::atomic<uint32_t> ensembleTempo{0};
+static std::atomic<int32_t> gridTrim{0};
 static uint8_t volume = 165;
 static const char* kitNames[] = {"Skin", "Box", "Brush", "Clay", "Glass", "Felt", "Wire"};
 static const char* voiceNames[] = {"Kick", "Snare", "C-Hat", "O-Hat", "Wood", "Tom", "Rim"};
@@ -43,6 +49,8 @@ void audioTask(void*) {
     int devKit = devKitRequest.exchange(-1);
     if (devKit >= 0) engine.setKitCharacter(unsigned(devKit));
     engine.setPlaying(playing.load());
+    if (uint32_t bpm = ensembleTempo.exchange(0)) engine.followTempo(bpm);
+    if (int32_t trim = gridTrim.exchange(0)) engine.trimGrid(trim);
     uint32_t start = micros();
     engine.render(buffers[index], 512);
     uint32_t elapsed = micros() - start;
@@ -164,14 +172,46 @@ void setup() {
   }
   if (xTaskCreatePinnedToCore(motionTask, "drums-motion", 4096, nullptr, 1, nullptr, 0) != pdPASS)
     Serial.println("Motion task unavailable");
+  if (!radio::begin(engine.bpm()))
+    Serial.println("ensemble radio unavailable; playing alone");
   if (xTaskCreatePinnedToCore(audioTask, "drums-audio", 4096, nullptr, 3, nullptr, 1) != pdPASS) {
     audioFailed = true; M5.Display.fillScreen(0x1082);
     M5.Display.setTextSize(2); M5.Display.setCursor(16, 62); M5.Display.print("audio error");
   }
 }
 
+// Keep the engine on the shared bar line. The error is measured against the
+// bar rather than the beat, so a device that joins late lands where the bar
+// starts instead of on whichever beat happened to be next.
+void serviceEnsemble() {
+  if (!radio::up()) return;
+  int64_t now = esp_timer_get_time();
+  radio::service(now, 4);
+  static int64_t lastTrim = 0;
+  if (now - lastTrim < 120000) return;
+  lastTrim = now;
+  ensembleTempo.store(radio::tempo());
+  int64_t untilBar = 0, barMicros = 0;
+  radio::barWindow(now, 4, untilBar, barMicros);
+  if (barMicros <= 0) return;
+  int64_t barSamples = int64_t(engine.barSamples());
+  if (barSamples <= 0) return;
+  // Where the engine should be in its own bar if it were on the shared one.
+  int64_t want = barSamples - (untilBar * int64_t(kit::rate)) / 1000000;
+  while (want < 0) want += barSamples;
+  want %= barSamples;
+  int64_t error = want - int64_t(engine.barPhase());
+  // Fold to the nearest bar: half a bar early is half a bar late.
+  error = ((error % barSamples) + barSamples) % barSamples;
+  if (error > barSamples / 2) error -= barSamples;
+  // A quarter of the error at a time, so the correction is spread over
+  // several bars and never heard as a stumble.
+  gridTrim.store(int32_t(error / 4));
+}
+
 void loop() {
   M5.update();
+  serviceEnsemble();
   if (devMode) {
     bool changed = false;
     if (M5.BtnA.wasClicked()) {
