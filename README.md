@@ -42,7 +42,7 @@ The data view shows the kit character, activity (sparse, steady or full), genera
 - **A short room ambience:** a small comb-and-diffuser send, tuned far shorter than Rill's echo, meant only to glue the seven voices together without smearing the groove.
 - **An always-on dub delay:** a tempo-synced feedback delay with tape-style darkening and a slow pitch wobble on the repeats, sitting under the mix at a modest level all the time rather than only on the punch. The Dub Echo punch throws its feedback, mix, wobble and tap length up temporarily on the same line instead of switching a separate effect on and off.
 
-Grooves are not saved across restarts. Device-to-device ensemble sync, so a Rill Drums unit could hold a shared tempo and role alongside Rill itself, follows the same unimplemented [design proposal](https://github.com/bruceblay/rill-synth/blob/main/SYNC-DESIGN.md) as Rill; nothing here talks to another device yet.
+Grooves are not saved across restarts. Near other Rill devices (Synth, Mallet or World) it joins an ensemble over ESP-NOW with no setup, keeping its groove on the shared tempo and bar line. See [how it works](https://github.com/bruceblay/rill-synth/blob/main/SYNC-DESIGN.md).
 
 ## Hardware
 
