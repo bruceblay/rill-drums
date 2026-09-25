@@ -76,6 +76,13 @@ void motionTask(void*) {
   }
 }
 
+// The tempo on the data view: the ensemble's, or the one it is about to
+// change to after a hold of the side button, so the hold shows at once.
+static unsigned shownTempo(unsigned own) {
+  if (unsigned t = radio::tempoAhead()) return t;
+  return own;
+}
+
 void draw() {
   auto& d = M5.Display;
   d.fillScreen(0x1082);
@@ -87,7 +94,7 @@ void draw() {
   uint32_t info = sceneInfo.load();
   static const char* activity[] = {"Sparse", "Steady", "Steady", "Full"};
   d.setCursor(16, 57); d.printf("%s %s", kitNames[(info >> 13) & 7], activity[(info >> 16) & 3]);
-  d.setCursor(16, 82); d.printf("%02u %u BPM  bar %u", unsigned(info >> 21), unsigned(info & 127), unsigned((info >> 7) & 63));
+  d.setCursor(16, 82); d.printf("%02u %u BPM  bar %u", unsigned(info >> 21), shownTempo(unsigned(info & 127)), unsigned((info >> 7) & 63));
   unsigned punch = (info >> 18) & 7;
   if (punch) { d.setCursor(16, 123); d.setTextSize(1); d.print(punchNames[punch]); d.setTextSize(2); }
   d.setCursor(16, 108);
@@ -158,6 +165,7 @@ void setup() {
   painting.seed(esp_random());
   sceneInfo.store(engine.displayInfo());
   M5.BtnA.setHoldThresh(650);
+  M5.BtnB.setHoldThresh(650);
   M5.Display.setRotation(1);
   M5.Display.setBrightness(55);
   M5.Speaker.setVolume(volume);
@@ -241,6 +249,12 @@ void loop() {
     volume = volume >= 255 ? 45 : volume + 30;
     M5.Speaker.setVolume(volume); changed = true;
     infoVisible = true; infoAt = now;
+  }
+  // Holding the side button slows the whole ensemble a step, from the bar
+  // after next; past the slowest it comes round to the fastest.
+  if (M5.BtnB.wasHold()) {
+    radio::slower();
+    changed = true; infoVisible = true; infoAt = now;
   }
   static uint32_t frameAt = 0;
   const bool newVisual = repaintRequested.exchange(false);

@@ -29,6 +29,7 @@ Actual 240 × 135 renderer captures, generated with `tools/visual_preview.cpp` u
 | Front button: tap | Generate a new kit character and groove, change the visual, and play |
 | Front button: hold for about 0.65 seconds | Fade sound out or in; the groove continues while quiet |
 | Side button: tap | Cycle volume and show the data view for four seconds |
+| Side button: hold | Slow the whole ensemble by 4 BPM, starting on the bar after next; below 52 it comes round to 100 |
 | Shake | Immediately switch to a different visual, without changing the groove |
 
 The data view shows the kit character, activity (sparse, steady or full), generation, tempo, bar count, volume and battery estimate.

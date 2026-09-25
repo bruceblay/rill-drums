@@ -621,8 +621,16 @@ class Engine {
   void followTempo(unsigned bpm) {
     following = bpm != 0;
     if (!bpm || bpm == tempo) return;
+    const uint32_t oldStep = stepSamples;
     tempo = std::max(40u, std::min(160u, bpm));
     stepSamples = rate * 60 / (tempo * 4);
+    // The ensemble changed tempo on a bar line and this arrives within a beat
+    // of it: re-time the steps since that line at the new length, so the
+    // step already scheduled lands where the new grid puts it.
+    if (stepIndex) {
+      gridNext = uint64_t(int64_t(gridNext) + int64_t(stepIndex) * (int64_t(stepSamples) - int64_t(oldStep)));
+      nextStep = std::max(clock, gridNext + ((stepIndex % 2 == 1) ? swingSamples : 0));
+    }
   }
   void trimGrid(int32_t samples) { gridTrim = samples; }
   // Where this engine sits inside its bar, in samples, which is the only
