@@ -35,15 +35,26 @@ static void checkBarPhase() {
 
 // The ensemble's loop, as main.cpp runs it: every 120 ms, trim a quarter of
 // the gap between the shared bar and barPhase(). Against a bar well off the
-// groove's own, the groove has to settle onto it and stay, swing and all.
+// groove's own, the groove has to settle onto it and stay, swing and all, and
+// through taps: a new groove waits for the downbeat and keeps the grid.
 static void checkTrimSettles() {
   for (uint32_t seed : {1u, 5u, 11u}) {
     kit::Engine engine(seed);
+    engine.followTempo(engine.bpm());  // as the ensemble does, every 120 ms
+    const unsigned first = engine.variation();
     const int64_t span = engine.barSamples(), check = kit::rate * 120 / 1000;
     const int64_t origin = span / 3;
     int64_t worst = 0;
+    unsigned previousStep = engine.currentStep(), previousVariation = first;
     for (int64_t i = 1; i <= int64_t(kit::rate) * 40; ++i) {
       engine.sample();
+      if (i > int64_t(kit::rate) * 15 && i % (kit::rate * 3) == 0) engine.newVariation();
+      // A new groove only ever begins on a downbeat.
+      if (engine.variation() != previousVariation) {
+        assert(previousStep == kit::steps - 1 && engine.currentStep() == 0);
+        previousVariation = engine.variation();
+      }
+      previousStep = engine.currentStep();
       if (i % check) continue;
       int64_t want = ((int64_t(engine.frames()) - origin) % span + span) % span;
       int64_t error = ((want - int64_t(engine.barPhase())) % span + span) % span;
@@ -52,7 +63,8 @@ static void checkTrimSettles() {
       if (i > int64_t(kit::rate) * 15) worst = std::max(worst, std::llabs(error));
     }
     assert(worst < kit::rate * 2 / 1000);
-    std::cout << "seed " << seed << ": settles on the shared bar, worst " << worst << " samples after 15 s\n";
+    assert(engine.variation() > first + 3);  // the taps did land
+    std::cout << "seed " << seed << ": settles on the shared bar, worst " << worst << " samples after 15 s, through taps\n";
   }
 }
 

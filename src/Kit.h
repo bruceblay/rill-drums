@@ -66,6 +66,8 @@ class Engine {
   // dropped or doubled step, which is louder than being a few milliseconds
   // out.
   int32_t gridTrim = 0;
+  // Set once a conductor's tempo arrives: from then on the bar is the room's.
+  bool following = false, variationPending = false;
   unsigned accentMode = 0;
   uint64_t ratchetAt = 0;
   uint32_t ratchetSpacing = 0;
@@ -423,6 +425,7 @@ class Engine {
       maybeHatRun();
       maybePunch();
     }
+    if (variationPending && stepIndex == 0) { variationPending = false; generate(); }
     // Swing delays the odd sixteenths off the grid and the grid keeps straight
     // time, so a swung bar lasts exactly as long as a straight one. Adding the
     // swing to the step length instead made every swung bar longer, and the
@@ -553,8 +556,12 @@ class Engine {
   void generate() {
     character = generation ? (character + 1 + random() % 6) % 7 : random() % 7;
     ++generation;
-    tempo = 54 + random() % 39;
-    stepSamples = rate * 60 / (tempo * 4);
+    const unsigned chosen = 54 + random() % 39;
+    // In an ensemble the tempo is the room's: a new groove keeps it.
+    if (!following) {
+      tempo = chosen;
+      stepSamples = rate * 60 / (tempo * 4);
+    }
     // Light and occasional by design -- swing also wanders bar to bar in
     // mutateGroove() rather than staying fixed for the whole variation.
     swingSamples = (random() % 4 == 0) ? uint32_t(stepSamples * (unit() * 0.09f)) : 0;
@@ -570,7 +577,9 @@ class Engine {
     stepIndex = 0; bar = 0;
     mutateAt = 2 + scoreRandom() % 4;
     scheduleFill();
-    nextStep = gridNext = clock;
+    // Following, a new groove begins on the bar line it was held for, on the
+    // grid already there; alone, it starts a grid of its own now.
+    if (!following) nextStep = gridNext = clock;
     const Character& k = active_();
     roomFeedback = 0.20f + unit() * 0.14f;
     roomMix = k.roomMix * (0.8f + unit() * 0.4f);
@@ -588,7 +597,12 @@ class Engine {
     dubWobblePhase = 0; dubDamp = 0; dubWrite = 0; dubDelay.fill(0);
     composeGroove();
   }
-  void newVariation() { generate(); }
+  // In an ensemble a tap lets the bar play out and the new groove comes in
+  // on the next downbeat, still on the shared grid. Alone, it starts at once.
+  void newVariation() {
+    if (following) variationPending = true;
+    else generate();
+  }
   uint32_t displayInfo() const {
     return (generation << 21) | (punchType << 18) | (activity << 16) | (character << 13) | (bar << 7) | tempo;
   }
@@ -605,6 +619,7 @@ class Engine {
   // Take a conductor's tempo. Phase is left alone: it arrives separately as
   // a trim, and changing both at once makes neither observable.
   void followTempo(unsigned bpm) {
+    following = bpm != 0;
     if (!bpm || bpm == tempo) return;
     tempo = std::max(40u, std::min(160u, bpm));
     stepSamples = rate * 60 / (tempo * 4);
