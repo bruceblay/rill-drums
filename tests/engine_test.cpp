@@ -2,10 +2,63 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "../src/Kit.h"
 #include <cassert>
+#include <cstdlib>
 #include <iostream>
 #include <memory>
 
+// The ensemble lines each device up by barPhase(), so it has to name the bar
+// the grid is really in: the downbeat reads as zero, and the bar's origin
+// stays put however much swing the groove picks up along the way.
+static void checkBarPhase() {
+  unsigned swungSeeds = 0;
+  for (uint32_t seed = 1; seed <= 24; ++seed) {
+    kit::Engine engine(seed);
+    const uint32_t span = engine.barSamples();
+    int64_t origin = -1;
+    unsigned previousStep = engine.currentStep(), downbeats = 0;
+    for (unsigned i = 0; i < kit::rate * 120; ++i) {
+      engine.sample();
+      const int64_t here = int64_t(engine.frames()) - engine.barPhase();
+      const int64_t folded = ((here % span) + span) % span;
+      if (origin < 0) origin = folded;
+      assert(folded == origin);  // no bar ever runs long
+      const unsigned step = engine.currentStep();
+      if (previousStep == 0 && step == 1) { assert(engine.barPhase() < 4); ++downbeats; }
+      previousStep = step;
+    }
+    assert(downbeats > 20);
+    swungSeeds += engine.swing() > 0;
+  }
+  assert(swungSeeds > 0);  // the check has to have met some swing
+  std::cout << "bar phase: downbeat reads zero, swung bars keep their length (" << swungSeeds << " seeds swung)\n";
+}
+
+// The ensemble's loop, as main.cpp runs it: every 120 ms, trim a quarter of
+// the gap between the shared bar and barPhase(). Against a bar well off the
+// groove's own, the groove has to settle onto it and stay, swing and all.
+static void checkTrimSettles() {
+  for (uint32_t seed : {1u, 5u, 11u}) {
+    kit::Engine engine(seed);
+    const int64_t span = engine.barSamples(), check = kit::rate * 120 / 1000;
+    const int64_t origin = span / 3;
+    int64_t worst = 0;
+    for (int64_t i = 1; i <= int64_t(kit::rate) * 40; ++i) {
+      engine.sample();
+      if (i % check) continue;
+      int64_t want = ((int64_t(engine.frames()) - origin) % span + span) % span;
+      int64_t error = ((want - int64_t(engine.barPhase())) % span + span) % span;
+      if (error > span / 2) error -= span;
+      engine.trimGrid(int32_t(error / 4));
+      if (i > int64_t(kit::rate) * 15) worst = std::max(worst, std::llabs(error));
+    }
+    assert(worst < kit::rate * 2 / 1000);
+    std::cout << "seed " << seed << ": settles on the shared bar, worst " << worst << " samples after 15 s\n";
+  }
+}
+
 int main() {
+  checkBarPhase();
+  checkTrimSettles();
   unsigned charactersSeen = 0, activitySeen = 0;
   for (uint32_t seed : {1u, 0x64756d73u, 0xffffffffu}) {
     auto engine = std::unique_ptr<kit::Engine>(new kit::Engine(seed));

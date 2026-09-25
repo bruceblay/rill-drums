@@ -56,7 +56,9 @@ class Engine {
   unsigned character = 0, generation = 0;
   unsigned tempo = 68, activity = 1;
   uint32_t stepSamples = rate * 60 / (68 * 4), swingSamples = 0;
-  uint64_t clock = 0, nextStep = 0;
+  // gridNext is where the next step falls on the straight sixteenth grid;
+  // nextStep is when it actually sounds, later by the swing on odd steps.
+  uint64_t clock = 0, nextStep = 0, gridNext = 0;
   unsigned stepIndex = 0, bar = 0, mutateAt = 3, fillAt = 5, fillLen = 2, fillKind = 0;
   // Ensemble: the shared grid arrives as a tempo to adopt and a phase error
   // to work off. The error is paid down a little at each step rather than
@@ -352,8 +354,15 @@ class Engine {
     serviceRatchet();
     if (clock < nextStep) return;
     if (gridTrim) {
-      int32_t bite = std::max(int32_t(-96), std::min(int32_t(96), gridTrim));
-      nextStep = uint64_t(int64_t(nextStep) + bite);
+      // Up to an eighth of a step at a time: a device joining half a bar off
+      // lands on the shared bar in a few seconds rather than minutes, and
+      // once there the trims are a few samples.
+      const int32_t most = int32_t(stepSamples / 8);
+      int32_t bite = std::max(-most, std::min(most, gridTrim));
+      // A trim moves the groove forward through its bar, as it does in World:
+      // the steps come sooner. Moving them later instead pushed the groove
+      // away from the shared bar until it sat half a bar off it.
+      gridNext = uint64_t(int64_t(gridNext) - bite);
       gridTrim -= bite;
     }
     float activityGain = activity == 0 ? 0.6f : activity == 3 ? 1.15f : 0.85f;
@@ -406,8 +415,7 @@ class Engine {
         scheduleRatchet(v, hatRunLeft ? hatRunSub : (performanceUnit() < 0.04f ? 2 : 1), velocity);
     }
     if (hatRunLeft) --hatRunLeft;
-    uint32_t swing = (stepIndex % 2 == 1) ? swingSamples : 0;
-    nextStep += stepSamples + swing;
+    gridNext += stepSamples;
     if (++stepIndex == steps) {
       stepIndex = 0; ++bar;
       if (bar >= mutateAt) { mutateGroove(); mutateAt = bar + 2 + scoreRandom() % 4; }
@@ -415,6 +423,11 @@ class Engine {
       maybeHatRun();
       maybePunch();
     }
+    // Swing delays the odd sixteenths off the grid and the grid keeps straight
+    // time, so a swung bar lasts exactly as long as a straight one. Adding the
+    // swing to the step length instead made every swung bar longer, and the
+    // groove slid behind the ensemble faster than the trim could pull it back.
+    nextStep = gridNext + ((stepIndex % 2 == 1) ? swingSamples : 0);
   }
   static float accentActivity(float gain) { return gain; }
   // Only the voices that can carry quiet detail without muddying the pulse.
@@ -557,7 +570,7 @@ class Engine {
     stepIndex = 0; bar = 0;
     mutateAt = 2 + scoreRandom() % 4;
     scheduleFill();
-    nextStep = clock;
+    nextStep = gridNext = clock;
     const Character& k = active_();
     roomFeedback = 0.20f + unit() * 0.14f;
     roomMix = k.roomMix * (0.8f + unit() * 0.4f);
@@ -585,6 +598,7 @@ class Engine {
   unsigned kitCharacter() const { return character; }
   unsigned activityState() const { return activity; }
   unsigned currentStep() const { return stepIndex; }
+  uint32_t swing() const { return swingSamples; }
   unsigned barCount() const { return bar; }
   uint64_t frames() const { return clock; }
   uint8_t drainHits() { uint8_t m = hitMask; hitMask = 0; return m; }
@@ -598,10 +612,16 @@ class Engine {
   void trimGrid(int32_t samples) { gridTrim = samples; }
   // Where this engine sits inside its bar, in samples, which is the only
   // thing the ensemble needs to compare.
+  // Read off the straight grid, from the step that last fell on it: stepIndex
+  // already names the next one, so counting from it put the whole groove a
+  // sixteenth early against the ensemble.
+  // A swung step sounds after its grid point, so the time since the last one
+  // can run past a whole step: the phase keeps counting through it.
   uint32_t barPhase() const {
-    uint64_t remaining = nextStep > clock ? nextStep - clock : 0;
-    uint32_t into = uint32_t(stepSamples - std::min<uint64_t>(stepSamples, remaining));
-    return uint32_t(stepIndex) * stepSamples + into;
+    const int64_t lastStep = int64_t(gridNext) - int64_t(stepSamples);
+    const int64_t into = std::max<int64_t>(0, int64_t(clock) - lastStep);
+    const int64_t span = int64_t(stepSamples) * steps;
+    return uint32_t((int64_t((stepIndex + steps - 1) % steps) * stepSamples + into) % span);
   }
   uint32_t barSamples() const { return stepSamples * steps; }
 
