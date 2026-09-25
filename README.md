@@ -6,7 +6,7 @@
 
 A generative percussion instrument for the **M5Stack StickS3**. Seven drum voices form slowly evolving grooves with reactive visuals. Tap for a new kit and pattern. Shake for a new visual. Sound and visuals run entirely on the device, without Wi-Fi or an account.
 
-[Play Rill Drums](https://rillsound.com/drums) · [Build and install](#build-and-install)
+[Play Rill Drums](https://rillsound.com/drums) · [Get on M5Burner](https://burner.m5stack.com/firmware/2102132800601452545) · [Build and install](#build-and-install)
 
 **Rill family:** [Synth](https://github.com/bruceblay/rill-synth) · [Mallet](https://github.com/bruceblay/rill-mallet) · [World](https://github.com/bruceblay/rill-world) · [Drums](https://github.com/bruceblay/rill-drums) · [Rill Sound](https://rillsound.com)
 
