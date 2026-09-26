@@ -2,13 +2,13 @@
 
 # Rill Drums
 
-**rill** /rɪl/ *noun* — a small stream or a tiny, shallow channel cut into soil by running water.
+**rill** /rɪl/ *noun*: a small stream or a tiny, shallow channel cut into soil by running water.
 
 A generative percussion instrument for the **M5Stack StickS3**. Seven drum voices form slowly evolving grooves with reactive visuals. Tap for a new kit and pattern. Shake for a new visual. Sound and visuals run entirely on the device, without Wi-Fi or an account.
 
 [Play Rill Drums](https://rillsound.com/drums) · [Get on M5Burner](https://burner.m5stack.com/firmware/2102132800601452545) · [Build and install](#build-and-install)
 
-**Rill family:** [Synth](https://github.com/bruceblay/rill-synth) · [Mallet](https://github.com/bruceblay/rill-mallet) · [World](https://github.com/bruceblay/rill-world) · [Drums](https://github.com/bruceblay/rill-drums) · [Rill Sound](https://rillsound.com)
+**Rill family:** [Voice](https://github.com/bruceblay/rill-voice) · [Synth](https://github.com/bruceblay/rill-synth) · [Mallet](https://github.com/bruceblay/rill-mallet) · [World](https://github.com/bruceblay/rill-world) · [Drums](https://github.com/bruceblay/rill-drums) · [Rill Sound](https://rillsound.com)
 
 ## Visuals
 
@@ -43,7 +43,7 @@ The data view shows the kit character, activity (sparse, steady or full), genera
 - **A short room ambience:** a small comb-and-diffuser send, tuned far shorter than Rill's echo, meant only to glue the seven voices together without smearing the groove.
 - **An always-on dub delay:** a tempo-synced feedback delay with tape-style darkening and a slow pitch wobble on the repeats, sitting under the mix at a modest level all the time rather than only on the punch. The Dub Echo punch throws its feedback, mix, wobble and tap length up temporarily on the same line instead of switching a separate effect on and off.
 
-Grooves are not saved across restarts. Near other Rill devices (Synth, Mallet or World) it joins an ensemble over ESP-NOW with no setup, keeping its groove on the shared tempo and bar line. In an ensemble a tap waits for the next shared bar, so a new piece comes in on the downbeat without leaving the beat. See [how it works](https://github.com/bruceblay/rill-synth/blob/main/SYNC-DESIGN.md).
+Grooves are not saved across restarts. Near other Rill devices (Voice, Synth, Mallet or World) it joins an ensemble over ESP-NOW with no setup, keeping its groove on the shared tempo and bar line. In an ensemble a tap waits for the next shared bar, so a new piece comes in on the downbeat without leaving the beat. See [how it works](https://github.com/bruceblay/rill-synth/blob/main/SYNC-DESIGN.md).
 
 ## Hardware
 
@@ -99,13 +99,13 @@ Tests cover five simulated minutes of groove per seed, bounded output, seed repr
 
 ## Project layout
 
-- `src/Kit.h` — drum synthesis/sample playback and generative groove
-- `src/Samples.h` — embedded one-shot PCM samples (Snare, Hats, Wood, Rim), 7 kits
-- `src/Pulse.h` — procedural visual families
-- `src/main.cpp` — audio, display, buttons and motion tasks
-- `src/ShakeDetector.h` — gesture recognition, shared with Rill
-- `tools/` — portable tests, auditions, previews and flashing
-- `tests/` — host verification
+- `src/Kit.h`: drum synthesis/sample playback and generative groove
+- `src/Samples.h`: embedded one-shot PCM samples (Snare, Hats, Wood, Rim), 7 kits
+- `src/Pulse.h`: procedural visual families
+- `src/main.cpp`: audio, display, buttons and motion tasks
+- `src/ShakeDetector.h`: gesture recognition, shared with Rill
+- `tools/`: portable tests, auditions, previews and flashing
+- `tests/`: host verification
 
 ## Credits and license
 
