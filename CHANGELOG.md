@@ -1,5 +1,11 @@
 # Changes
 
+## 0.2.0 (2026-09-29)
+
+- Plays with other Rill devices nearby over ESP-NOW, with no setup. The lowest device id keeps the clock, and every device plays on the shared tempo and bar line.
+- A new groove starts on the next shared downbeat.
+- Holding the side button slows the whole ensemble by 4 BPM from the bar after next. Below 52 it comes round to 100.
+
 ## Study 8
 
 Every kit was one recipe (noise into a bandpass) with only the filter frequency and decay changed, which is why they read as a single sound tuned seven ways. A small speaker flattens exactly that kind of spectral-tilt difference while preserving texture and decay, so each kit now runs its own chain of stock Tone.js effects: warm waveshaping, bitcrush, reverb wash, saturation, a bright small room, a dark wash on brown noise, and heavy grit. Trimming the inaudible sample tails below -44 dBFS more than halved the sample data.
